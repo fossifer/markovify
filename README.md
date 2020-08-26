@@ -24,7 +24,7 @@ Some reasons:
 
 - Relies only on pure-Python libraries, and very few of them.
 
-- Tested on Python 2.7, 3.4, 3.5, 3.6 and 3.7.
+- Tested on Python 2.7, 3.4, 3.5, 3.6, 3.7, and 3.8.
 
 
 ## Installation
@@ -270,6 +270,7 @@ print(combined_model.make_sentence())
 - [python-ia-markov](https://github.com/accraze/python-ia-markov), trains Markov models on Internet Archive text files
 - [@bot_homer](https://twitter.com/bot_homer), a Twitter bot trained using Homer Simpson's dialogues of 600 chapters. [[code](https://github.com/ivanlen/simpsons_bot)].
 - [git-commit-gen](https://github.com/solean/git-commit-gen), generates git commit messages by using markovify to build a model of a repo's git log
+- [fakesocial](https://fakesocial.net),  Fake social network using generated content. [[code](https://github.com/berfr/fakesocial)]
 
 Have other examples? Pull requests welcome.
 
@@ -297,5 +298,9 @@ Many thanks to the following GitHub users for contributing code and/or ideas:
 - [@danmayer](https://github.com/danmayer)
 - [@kade-robertson](https://github.com/kade-robertson)
 - [@erikerlandson](https://github.com/erikerlandson)
+- [@briennakh](https://github.com/briennakh)
+- [@berfr](https://github.com/berfr)
+- [@Freestackmejai](https://github.com/Freestackmejai)
+- [@rokala](https://github.com/rokala)
 
 Initially developed at [BuzzFeed](https://www.buzzfeed.com).

@@ -190,14 +190,15 @@ class Text(object):
         If `test_output` is set as False then the `test_sentence_output` check
         will be skipped.
 
-        If `max_words` is specified, the word count for the sentence will be
-        evaluated against the provided limit.
+        If `max_words` or `min_words` are specified, the word count for the sentence will be
+        evaluated against the provided limit(s).
         """
         tries = kwargs.get('tries', DEFAULT_TRIES)
         mor = kwargs.get('max_overlap_ratio', DEFAULT_MAX_OVERLAP_RATIO)
         mot = kwargs.get('max_overlap_total', DEFAULT_MAX_OVERLAP_TOTAL)
         test_output = kwargs.get('test_output', True)
         max_words = kwargs.get('max_words', None)
+        min_words = kwargs.get('min_words', None)
 
         if init_state != None:
             prefix = list(init_state)
@@ -211,8 +212,8 @@ class Text(object):
 
         for _ in range(tries):
             words = prefix + self.chain.walk(init_state)
-            if max_words != None and len(words) > max_words:
-                continue
+            if (max_words != None and len(words) > max_words) or (min_words != None and len(words) < min_words):
+                continue # pragma: no cover # see https://github.com/nedbat/coveragepy/issues/198
             if test_output and hasattr(self, "rejoined_text"):
                 if self.test_sentence_output(words, mor, mot):
                     return self.word_join(words)
@@ -270,8 +271,8 @@ class Text(object):
             output = self.make_sentence(init_state, **kwargs)
             if output is not None:
                 return output
-
-        return None
+        err_msg = "`make_sentence_with_start` can't find sentence beginning with {0}".format(beginning)
+        raise ParamError(err_msg)
 
     @classmethod
     def from_chain(cls, chain_json, corpus=None, parsed_sentences=None):

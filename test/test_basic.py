@@ -104,9 +104,10 @@ class MarkovifyTestBase(unittest.TestCase):
         except markovify.text.ParamError:
             assert(True)
 	
+        with self.assertRaises(Exception) as context:
+            text_model.make_sentence_with_start(start_str)
         text_model = self.sherlock_model_ss3
-        text_model.make_sentence_with_start(start_str)
-        sent = text_model.make_sentence_with_start("Sherlock")
+        sent = text_model.make_sentence_with_start("Sherlock", tries=50)
         assert(markovify.chain.BEGIN not in sent)
 
     def test_short_sentence(self):
@@ -132,6 +133,11 @@ class MarkovifyTestBase(unittest.TestCase):
         text_model = self.sherlock_model
         sent = text_model.make_sentence(max_words=0)
         assert sent is None
+
+    def test_min_words(self):
+        text_model = self.sherlock_model
+        sent = text_model.make_sentence(min_words=5)
+        assert len(sent.split(' ')) >= 5
 
     def test_newline_text(self):
         with open(os.path.join(os.path.dirname(__file__), "texts/senate-bills.txt")) as f:
