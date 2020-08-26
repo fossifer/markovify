@@ -5,13 +5,14 @@ import json
 import copy
 
 # Python3 compatibility
-try: # pragma: no cover
+try:  # pragma: no cover
     basestring
-except NameError: # pragma: no cover
+except NameError:  # pragma: no cover
     basestring = str
 
 BEGIN = "___BEGIN__"
 END = "___END__"
+
 
 def accumulate(iterable, func=operator.add):
     """
@@ -25,16 +26,19 @@ def accumulate(iterable, func=operator.add):
         total = func(total, element)
         yield total
 
+
 def compile_next(next_dict):
     words = list(next_dict.keys())
     cff = list(accumulate(next_dict.values()))
     return [words, cff]
+
 
 class Chain(object):
     """
     A Markov chain representing processes that have both beginnings and ends.
     For example: Sentences.
     """
+
     def __init__(self, corpus, state_size, model=None):
         """
         `corpus`: A list of lists, where each outer list is a "run"
@@ -48,16 +52,23 @@ class Chain(object):
         """
         self.state_size = state_size
         self.model = model or self.build(corpus, self.state_size)
-        self.compiled = (len(self.model) > 0) and (type(self.model[tuple([BEGIN]*state_size)]) == list)
+        self.model_reversed = model or self.build_reverse(
+            corpus, self.state_size)
+        self.compiled = (len(self.model) > 0) and (
+            isinstance(self.model[tuple([BEGIN] * state_size)], list))
         if not self.compiled:
             self.precompute_begin_state()
 
-    def compile(self, inplace = False):
+    def compile(self, inplace=False):
         if self.compiled:
-            if inplace: return self
-            return Chain(None, self.state_size, model = copy.deepcopy(self.model))
-        mdict = { state: compile_next(next_dict) for (state, next_dict) in self.model.items() }
-        if not inplace: return Chain(None, self.state_size, model = mdict)
+            if inplace:
+                return self
+            return Chain(None, self.state_size,
+                         model=copy.deepcopy(self.model))
+        mdict = {state: compile_next(next_dict)
+                 for (state, next_dict) in self.model.items()}
+        if not inplace:
+            return Chain(None, self.state_size, model=mdict)
         self.model = mdict
         self.compiled = True
         return self
@@ -76,10 +87,37 @@ class Chain(object):
         model = {}
 
         for run in corpus:
-            items = ([ BEGIN ] * state_size) + run + [ END ]
+            items = ([BEGIN] * state_size) + run + [END]
             for i in range(len(run) + 1):
-                state = tuple(items[i:i+state_size])
-                follow = items[i+state_size]
+                state = tuple(items[i:i + state_size])
+                follow = items[i + state_size]
+                if state not in model:
+                    model[state] = {}
+
+                if follow not in model[state]:
+                    model[state][follow] = 0
+
+                model[state][follow] += 1
+        return model
+
+    def build_reverse(self, corpus, state_size):
+        """
+        Build a Python representation of the Markov model. Returns a dict
+        of dicts where the keys of the outer dict represent all possible states,
+        and point to the inner dicts. The inner dicts represent all possibilities
+        for the "next" item in the chain, along with the count of times it
+        appears.
+        """
+
+        # Using a DefaultDict here would be a lot more convenient, however the memory
+        # usage is far higher.
+        model = {}
+
+        for run in corpus:
+            items = ([BEGIN] * state_size) + list(run[::-1]) + [END]
+            for i in range(len(run) + 1):
+                state = tuple(items[i:i + state_size])
+                follow = items[i + state_size]
                 if state not in model:
                     model[state] = {}
 
@@ -94,7 +132,7 @@ class Chain(object):
         Caches the summation calculation and available choices for BEGIN * state_size.
         Significantly speeds up chain generation on large corpora. Thanks, @schollz!
         """
-        begin_state = tuple([ BEGIN ] * self.state_size)
+        begin_state = tuple([BEGIN] * self.state_size)
         choices, cumdist = compile_next(self.model[begin_state])
         self.begin_cumdist = cumdist
         self.begin_choices = choices
@@ -105,11 +143,27 @@ class Chain(object):
         """
         if self.compiled:
             choices, cumdist = self.model[state]
-        elif state == tuple([ BEGIN ] * self.state_size):
+        elif state == tuple([BEGIN] * self.state_size):
             choices = self.begin_choices
             cumdist = self.begin_cumdist
         else:
             choices, weights = zip(*self.model[state].items())
+            cumdist = list(accumulate(weights))
+        r = random.random() * cumdist[-1]
+        selection = choices[bisect.bisect(cumdist, r)]
+        return selection
+
+    def move_back(self, state):
+        """
+        Given a state, choose the next item at random.
+        """
+        if self.compiled:
+            choices, cumdist = self.model_reversed[state]
+        elif state == tuple([BEGIN] * self.state_size):
+            choices = self.begin_choices
+            cumdist = self.begin_cumdist
+        else:
+            choices, weights = zip(*self.model_reversed[state].items())
             cumdist = list(accumulate(weights))
         r = random.random() * cumdist[-1]
         selection = choices[bisect.bisect(cumdist, r)]
@@ -124,9 +178,32 @@ class Chain(object):
         state = init_state or (BEGIN,) * self.state_size
         while True:
             next_word = self.move(state)
-            if next_word == END: break
+            if next_word == END:
+                break
             yield next_word
             state = tuple(state[1:]) + (next_word,)
+
+    def gen_back(self, init_state=None):
+        """
+        Starting either with a naive BEGIN state, or the provided `init_state`
+        (as a tuple), return a generator that will yield successive items
+        until the chain reaches the END state.
+        """
+        state = init_state or (BEGIN,) * self.state_size
+        while True:
+            next_word = self.move_back(state)
+            if next_word == END:
+                break
+            yield next_word
+            state = tuple(state[1:]) + (next_word,)
+
+    def walk_back(self, init_state=None):
+        """
+        Return a list representing a single run of the Markov model, either
+        starting with a naive BEGIN state, or the provided `init_state`
+        (as a tuple).
+        """
+        return list(self.gen_back(init_state))
 
     def walk(self, init_state=None):
         """
