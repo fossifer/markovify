@@ -123,6 +123,12 @@ class Text(object):
         """
         return re.split(self.word_split_pattern, sentence)
 
+    def word_split_and_reverse(self, sentence):
+        """
+        Splits a sentence into a list of words.
+        """
+        return re.split(self.word_split_pattern, sentence)[::-1]
+
     def word_join(self, words):
         """
         Re-joins a list of words into a sentence.
@@ -336,9 +342,9 @@ class Text(object):
             beginning)
         raise ParamError(err_msg)
 
-    def make_sentence_that_finish(self, beginning, strict=False, **kwargs):
+    def make_sentence_that_finish(self, finishing, **kwargs):
         """
-        Tries making a sentence that begins with `beginning` string,
+        Tries making a sentence that finish with `finishing` string,
         which should be a string of one to `self.state` words known
         to exist in the corpus.
 
@@ -350,52 +356,41 @@ class Text(object):
 
         **kwargs are passed to `self.make_sentence`
         """
-        split = tuple(self.word_split(beginning))
+        split = tuple(self.word_split_and_reverse(finishing))
         word_count = len(split)
 
         if word_count == self.state_size:
             init_states = [split]
-
         elif word_count > 0 and word_count < self.state_size:
-            if strict:
-                init_states = [
-                    (BEGIN,) * (self.state_size - word_count) + split]
+            init_states = [key for key in self.chain.model_reversed.keys()
+                           # check for starting with begin as well ordered
+                           # lists
+                           if tuple(filter(lambda x: x != BEGIN, key))[:word_count] == split]
 
-            else:
-                init_states = [key for key in self.chain.model_reversed.keys()
-                               # check for starting with begin as well ordered
-                               # lists
-                               if tuple(filter(lambda x: x != BEGIN, key))[:word_count] == split]
-
-                random.shuffle(init_states)
+            random.shuffle(init_states)
         else:
-            err_msg = "`make_sentence_with_start` for this model requires a string containing 1 to {0} words. Yours has {1}: {2}".format(
+            err_msg = "`make_sentence_that_finish` for this model requires a string containing 1 to {0} words. Yours has {1}: {2}".format(
                 self.state_size, word_count, str(split))
             raise ParamError(err_msg)
 
         for init_state in init_states:
             output = self.make_sentence_back(init_state, **kwargs)
             if output is not None:
-                return output
-        err_msg = "`make_sentence_with_start` can't find sentence beginning with {0}".format(
-            beginning)
+                reversed_output = reversed(output.split(' '))
+                return ' '.join(reversed_output)
+        err_msg = "`make_sentence_that_finish` can't find sentence finishing with {0}".format(
+            finishing)
         raise ParamError(err_msg)
 
-    def make_sentence_that_contains(self, beginning, **kwargs):
+    def make_sentence_that_contains(self, contains, **kwargs):
         """
-        Tries making a sentence that begins with `beginning` string,
+        Tries making a sentence that contains with `contains` string,
         which should be a string of one to `self.state` words known
         to exist in the corpus.
 
-        If strict == True, then markovify will draw its initial inspiration
-        only from sentences that start with the specified word/phrase.
-
-        If strict == False, then markovify will draw its initial inspiration
-        from any sentence containing the specified word/phrase.
-
         **kwargs are passed to `self.make_sentence`
         """
-        split = tuple(self.word_split(beginning))
+        split = tuple(self.word_split(contains))
         word_count = len(split)
 
         if word_count == self.state_size:
@@ -412,26 +407,27 @@ class Text(object):
             err_msg = "`make_sentence_that_contains` for this model requires a string containing 1 to {0} words. Yours has {1}: {2}".format(
                 self.state_size, word_count, str(split))
             raise ParamError(err_msg)
-        print(init_states)
         for init_state in init_states:
             output = self.make_sentence(init_state, **kwargs)
-            print(output)
+
             if output is not None:
 
                 end_of_sentence = output
+                end_of_sentence_first_word = end_of_sentence.split(' ')[1]
 
-                output = self.make_sentence_that_finish(beginning)
-
+                output = self.make_sentence_that_finish(end_of_sentence_first_word + " " +contains)
                 if(output is not None):
 
-                    output.split(' ').pop()
-                    begin_of_sentence = output.split(' ')[::-1]
+                    output = output.split(' ')
+                    output.pop(0)
+                    output.pop(0)
+                    begin_of_sentence = output[::-1]
 
                     begin_of_sentence_ordered = ' '.join(begin_of_sentence)
 
                     return begin_of_sentence_ordered + ' ' + end_of_sentence
         err_msg = "`make_sentence_that_contains` can't find sentence that contains {0}".format(
-            beginning)
+            contains)
         raise ParamError(err_msg)
 
     @classmethod

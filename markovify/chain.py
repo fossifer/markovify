@@ -3,6 +3,7 @@ import operator
 import bisect
 import json
 import copy
+import ast
 
 # Python3 compatibility
 try:  # pragma: no cover
@@ -39,7 +40,7 @@ class Chain(object):
     For example: Sentences.
     """
 
-    def __init__(self, corpus, state_size, model=None):
+    def __init__(self, corpus, state_size, model=None, model_reversed=None):
         """
         `corpus`: A list of lists, where each outer list is a "run"
         of the process (e.g., a single sentence), and each inner list
@@ -51,11 +52,14 @@ class Chain(object):
         uses to represent its state. For text generation, 2 or 3 are typical.
         """
         self.state_size = state_size
+
         self.model = model or self.build(corpus, self.state_size)
-        self.model_reversed = model or self.build_reverse(
+        self.model_reversed = model_reversed or self.build_reverse(
             corpus, self.state_size)
-        self.compiled = (len(self.model) > 0) and (
-            isinstance(self.model[tuple([BEGIN] * state_size)], list))
+
+        self.compiled = ((len(self.model) > 0) and (len(self.model_reversed) > 0)) and (isinstance(self.model[tuple([BEGIN] * state_size)], list)
+            and (isinstance(self.model_reversed[tuple([BEGIN] * state_size)], list)))
+
         if not self.compiled:
             self.precompute_begin_state()
 
@@ -64,12 +68,21 @@ class Chain(object):
             if inplace:
                 return self
             return Chain(None, self.state_size,
-                         model=copy.deepcopy(self.model))
+                         model=copy.deepcopy(self.model),
+                         model_reversed=copy.deepcopy(self.model_reversed))
+    
         mdict = {state: compile_next(next_dict)
                  for (state, next_dict) in self.model.items()}
+
+        mdict_reversed = {state: compile_next(next_dict)
+                 for (state, next_dict) in self.model_reversed.items()}
+
         if not inplace:
-            return Chain(None, self.state_size, model=mdict)
+            return Chain(None,self.state_size,
+                         model=mdict, 
+                         model_reversed=mdict_reversed)
         self.model = mdict
+        self.model_reversed = mdict_reversed
         self.compiled = True
         return self
 
@@ -114,7 +127,8 @@ class Chain(object):
         model = {}
 
         for run in corpus:
-            items = ([BEGIN] * state_size) + list(run[::-1]) + [END]
+            run.reverse()
+            items = ([BEGIN] * state_size) + run + [END]
             for i in range(len(run) + 1):
                 state = tuple(items[i:i + state_size])
                 follow = items[i + state_size]
@@ -217,7 +231,7 @@ class Chain(object):
         """
         Dump the model as a JSON object, for loading later.
         """
-        return json.dumps(list(self.model.items()))
+        return json.dumps(list(self.model.items())), json.dumps(list(self.model_reversed.items()))
 
     @classmethod
     def from_json(cls, json_thing):
@@ -225,20 +239,35 @@ class Chain(object):
         Given a JSON object or JSON string that was created by `self.to_json`,
         return the corresponding markovify.Chain.
         """
-
         if isinstance(json_thing, basestring):
             obj = json.loads(json_thing)
         else:
             obj = json_thing
+        print("okokok")
+        print(type(json_thing[0]))
 
-        if isinstance(obj, list):
-            rehydrated = dict((tuple(item[0]), item[1]) for item in obj)
-        elif isinstance(obj, dict):
-            rehydrated = obj
+
+        if isinstance(obj, tuple) and not isinstance(obj[0], dict):
+            obj1 = ast.literal_eval(obj[0])
+            obj2 = ast.literal_eval(obj[1])
+            rehydrated = dict((tuple(item[0]), item[1]) for item in obj1)
+            rehydrated_reversed = dict((tuple(item[0]), item[1]) for item in obj2)
+
+        elif isinstance(obj, list) and not isinstance(obj[0], dict):
+            obj1 = ast.literal_eval(obj[0])
+            obj2 = ast.literal_eval(obj[1])
+            rehydrated = dict((tuple(item[0]), item[1]) for item in obj1)
+            rehydrated_reversed = dict((tuple(item[0]), item[1]) for item in obj2)
+
+        elif isinstance(obj[0], dict):
+            obj1 = obj[0]
+            obj2 = obj[1]
+            rehydrated = obj1
+            rehydrated_reversed = obj2
         else:
-            raise ValueError("Object should be dict or list")
+            raise ValueError("Object should be tuple")
 
         state_size = len(list(rehydrated.keys())[0])
 
-        inst = cls(None, state_size, rehydrated)
+        inst = cls(None, state_size, rehydrated, rehydrated_reversed)
         return inst

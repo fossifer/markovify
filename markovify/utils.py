@@ -6,15 +6,17 @@ def get_model_dict(thing):
     if isinstance(thing, Chain):
         if thing.compiled:
             raise ValueError("Not implemented for compiled markovify.Chain")
-        return thing.model
+        return thing.model, thing.model_reversed
     if isinstance(thing, Text):
         if thing.chain.compiled:
             raise ValueError("Not implemented for compiled markovify.Chain")
-        return thing.chain.model
+        return thing.chain.model, thing.chain.model_reversed
     if isinstance(thing, list):
-        return dict(thing)
+        print("list instance")
+        return dict(thing[0]), dict(thing[1])
     if isinstance(thing, dict):
-        return thing
+        print("dict instance")
+        return thing[0], thing[1]
 
     raise ValueError(
         "`models` should be instances of list, dict, markovify.Chain, or markovify.Text")
@@ -28,8 +30,13 @@ def combine(models, weights=None):
         raise ValueError("`models` and `weights` lengths must be equal.")
 
     model_dicts = list(map(get_model_dict, models))
+    # thing.model, thing.model_reversed' and thing.model 2, thing.model_reversed 2
+
+    models_list = [model_dicts[0][0], model_dicts[1][0]]
+    models_reversed_list = [model_dicts[0][1], model_dicts[1][1]]
+    
     state_sizes = [len(list(md.keys())[0])
-                   for md in model_dicts]
+                   for md in model_dicts[0]]
 
     if len(set(state_sizes)) != 1:
         raise ValueError("All `models` must have the same state size.")
@@ -39,7 +46,7 @@ def combine(models, weights=None):
 
     c = {}
 
-    for m, w in zip(model_dicts, weights):
+    for m, w in zip(models_list, weights):
         for state, options in m.items():
             current = c.get(state, {})
             for subseq_k, subseq_v in options.items():
@@ -47,10 +54,23 @@ def combine(models, weights=None):
                 current[subseq_k] = subseq_prev + (subseq_v * w)
             c[state] = current
 
+    c_reversed = {}
+
+    for m, w in zip(models_reversed_list, weights):
+        for state, options in m.items():
+            current = c_reversed.get(state, {})
+            for subseq_k, subseq_v in options.items():
+                subseq_prev = current.get(subseq_k, 0)
+                current[subseq_k] = subseq_prev + (subseq_v * w)
+            c_reversed[state] = current
+
+    c_list =[c, c_reversed]
+    print(type(c_list))
     ret_inst = models[0]
 
     if isinstance(ret_inst, Chain):
-        return Chain.from_json(c)
+        return Chain.from_json(c_list)
+
     if isinstance(ret_inst, Text):
         if any(m.retain_original for m in models):
             combined_sentences = []
