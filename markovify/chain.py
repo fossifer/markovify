@@ -98,7 +98,8 @@ class Chain(object):
         # Using a DefaultDict here would be a lot more convenient, however the memory
         # usage is far higher.
         model = {}
-
+        print("----------- corpus build")
+        print(corpus)
         for run in corpus:
             items = ([BEGIN] * state_size) + run + [END]
             for i in range(len(run) + 1):
@@ -125,9 +126,12 @@ class Chain(object):
         # Using a DefaultDict here would be a lot more convenient, however the memory
         # usage is far higher.
         model = {}
-
+        print("----------- corpus")
+        print(corpus)
         for run in corpus:
             run.reverse()
+            print("run")
+            print(run)
             items = ([BEGIN] * state_size) + run + [END]
             for i in range(len(run) + 1):
                 state = tuple(items[i:i + state_size])
@@ -243,9 +247,10 @@ class Chain(object):
             obj = json.loads(json_thing)
         else:
             obj = json_thing
-        print("okokok")
-        print(type(json_thing[0]))
-
+        # print("okokok")
+        # print(type(json_thing[0]))
+        print("---")
+        print(type(json_thing))
 
         if isinstance(obj, tuple) and not isinstance(obj[0], dict):
             obj1 = ast.literal_eval(obj[0])
@@ -258,7 +263,6 @@ class Chain(object):
             obj2 = ast.literal_eval(obj[1])
             rehydrated = dict((tuple(item[0]), item[1]) for item in obj1)
             rehydrated_reversed = dict((tuple(item[0]), item[1]) for item in obj2)
-
         elif isinstance(obj[0], dict):
             obj1 = obj[0]
             obj2 = obj[1]

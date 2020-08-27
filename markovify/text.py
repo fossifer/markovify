@@ -56,7 +56,11 @@ class Text(object):
         else:
             if not chain:
                 parsed = parsed_sentences or self.generate_corpus(input_text)
+            # print("no retain")
+            # print(*parsed)
             self.chain = chain or Chain(parsed, state_size)
+            print("no retain")
+            print(self.chain.model_reversed)
 
     def compile(self, inplace=False):
         if inplace:

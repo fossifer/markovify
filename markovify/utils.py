@@ -8,6 +8,7 @@ def get_model_dict(thing):
             raise ValueError("Not implemented for compiled markovify.Chain")
         return thing.model, thing.model_reversed
     if isinstance(thing, Text):
+        print("text instance")
         if thing.chain.compiled:
             raise ValueError("Not implemented for compiled markovify.Chain")
         return thing.chain.model, thing.chain.model_reversed
@@ -34,9 +35,16 @@ def combine(models, weights=None):
 
     models_list = [model_dicts[0][0], model_dicts[1][0]]
     models_reversed_list = [model_dicts[0][1], model_dicts[1][1]]
-    
+
+    # print(type(model_dicts[0]))
+    # for md in model_dicts[0]:
+    #     print(type(md))
+    #     print(md.keys())
+    #     print(len(list(md.keys())[0]))
+    # print(len(model_dicts))
+
     state_sizes = [len(list(md.keys())[0])
-                   for md in model_dicts[0]]
+                   for md in models_list]
 
     if len(set(state_sizes)) != 1:
         raise ValueError("All `models` must have the same state size.")
@@ -65,7 +73,8 @@ def combine(models, weights=None):
             c_reversed[state] = current
 
     c_list =[c, c_reversed]
-    print(type(c_list))
+    print("----_______")
+    print(c_list[1])
     ret_inst = models[0]
 
     if isinstance(ret_inst, Chain):
@@ -77,10 +86,10 @@ def combine(models, weights=None):
             for m in models:
                 if m.retain_original:
                     combined_sentences += m.parsed_sentences
-            return ret_inst.from_chain(c, parsed_sentences=combined_sentences)
+            return ret_inst.from_chain(c_list, parsed_sentences=combined_sentences)
         else:
-            return ret_inst.from_chain(c)
+            return ret_inst.from_chain(c_list)
     if isinstance(ret_inst, list):
         return list(c.items())
     if isinstance(ret_inst, dict):
-        return c
+        return c_reversed
