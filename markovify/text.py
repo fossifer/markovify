@@ -349,12 +349,6 @@ class Text(object):
         which should be a string of one to `self.state` words known
         to exist in the corpus.
 
-        If strict == True, then markovify will draw its initial inspiration
-        only from sentences that start with the specified word/phrase.
-
-        If strict == False, then markovify will draw its initial inspiration
-        from any sentence containing the specified word/phrase.
-
         **kwargs are passed to `self.make_sentence`
         """
         split = tuple(self.word_split_and_reverse(finishing))
@@ -410,19 +404,20 @@ class Text(object):
             raise ParamError(err_msg)
         for init_state in init_states:
             output = self.make_sentence(init_state, **kwargs)
-
+            # print(output)
             if output is not None:
 
                 end_of_sentence = output
                 end_of_sentence_first_word = end_of_sentence.split(' ')[1]
-
-                output = self.make_sentence_that_finish(end_of_sentence_first_word + " " +contains)
+                # print(contains)
+                # print(end_of_sentence_first_word)
+                output = self.make_sentence_that_finish(contains + " " + end_of_sentence_first_word)
                 if(output is not None):
-
                     output = output.split(' ')
-                    output.pop(0)
-                    output.pop(0)
-                    begin_of_sentence = output[::-1]
+                    # pop 2 words that are in the other sentence
+                    output.pop()
+                    output.pop()
+                    begin_of_sentence = output
 
                     begin_of_sentence_ordered = ' '.join(begin_of_sentence)
 
