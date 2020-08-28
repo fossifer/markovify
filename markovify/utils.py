@@ -8,15 +8,12 @@ def get_model_dict(thing):
             raise ValueError("Not implemented for compiled markovify.Chain")
         return thing.model, thing.model_reversed
     if isinstance(thing, Text):
-        print("text instance")
         if thing.chain.compiled:
             raise ValueError("Not implemented for compiled markovify.Chain")
         return thing.chain.model, thing.chain.model_reversed
     if isinstance(thing, list):
-        print("list instance")
         return dict(thing[0]), dict(thing[1])
     if isinstance(thing, dict):
-        print("dict instance")
         return thing[0], thing[1]
 
     raise ValueError(
@@ -36,13 +33,6 @@ def combine(models, weights=None):
     models_list = [model_dicts[0][0], model_dicts[1][0]]
     models_reversed_list = [model_dicts[0][1], model_dicts[1][1]]
 
-    # print(type(model_dicts[0]))
-    # for md in model_dicts[0]:
-    #     print(type(md))
-    #     print(md.keys())
-    #     print(len(list(md.keys())[0]))
-    # print(len(model_dicts))
-
     state_sizes = [len(list(md.keys())[0])
                    for md in models_list]
 
@@ -53,7 +43,6 @@ def combine(models, weights=None):
         raise ValueError("All `models` must be of the same type.")
 
     c = {}
-
     for m, w in zip(models_list, weights):
         for state, options in m.items():
             current = c.get(state, {})
@@ -73,8 +62,6 @@ def combine(models, weights=None):
             c_reversed[state] = current
 
     c_list =[c, c_reversed]
-    print("----_______")
-    print(c_list[1])
     ret_inst = models[0]
 
     if isinstance(ret_inst, Chain):
